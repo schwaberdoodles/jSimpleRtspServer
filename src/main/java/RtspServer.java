@@ -42,12 +42,15 @@ public class RtspServer {
             if (msg instanceof DefaultHttpRequest) {
                 
                 DefaultHttpRequest req = (DefaultHttpRequest) msg;
-                
+                req.decoderResult();
+
+                System.err.println(req.toString());
                 FullHttpResponse rep = new DefaultFullHttpResponse(RtspVersions.RTSP_1_0,  RtspResponseStatuses.NOT_FOUND);
+
                 if (req.method() == RtspMethods.OPTIONS)
                 {					
                     rep.setStatus(RtspResponseStatuses.OK);
-                    rep.headers().add(RtspHeaderValues.PUBLIC, "DESCRIBE, SETUP, PLAY, TEARDOWN");
+                    rep.headers().add(RtspHeaderValues.PUBLIC, "DESCRIBE, SETUP, PLAY, TEARDOWN, RECORD, ANNOUNCE");
                     sendAnswer(ctx, req, rep);
                 }
                 else if (req.method() == RtspMethods.DESCRIBE)
@@ -73,9 +76,24 @@ public class RtspServer {
                     rep.setStatus(RtspResponseStatuses.OK);
                     sendAnswer(ctx, req, rep);
                 }
+                else if (req.method() == RtspMethods.RECORD)
+                {
+                    rep.setStatus(RtspResponseStatuses.OK);
+                    rep.headers().add(RtspHeaderNames.RANGE, "npt=0.000-");
+                    String session = String.format("%08x",(int)(Math.random()*65536));
+                    rep.headers().add(RtspHeaderNames.SESSION, session);
+                    sendAnswer(ctx, req, rep);
+                }
+                else if (req.method() == RtspMethods.ANNOUNCE)
+                {
+                    msg. 
+                    rep.setStatus(RtspResponseStatuses.OK);
+
+                    sendAnswer(ctx, req, rep);
+                }
                 else
                 {
-                    System.err.println("Not managed :" + req.method());					
+                    System.err.println("Not managed :" + req.method());
                     ctx.write(rep).addListener(ChannelFutureListener.CLOSE);
                 }
             }
@@ -98,8 +116,8 @@ public class RtspServer {
                 }
             });
 
-            Channel ch = b.bind(8554).sync().channel();
-            System.err.println("Connect to rtsp://127.0.0.1:8554");
+            Channel ch = b.bind("0.0.0.0",8554).sync().channel();
+            System.err.println("Listing on port 8554");
             ch.closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
